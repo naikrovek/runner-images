@@ -1,76 +1,17 @@
-locals {
-  managed_image_name = var.managed_image_name != "" ? var.managed_image_name : "packer-${var.image_os}-${var.image_version}"
-}
 
-variable "allowed_inbound_ip_addresses" {
-  type    = list(string)
-  default = []
-}
-
-variable "azure_tags" {
-  type    = map(string)
-  default = {}
-}
-
-variable "build_resource_group_name" {
+variable "name_tag" {
   type    = string
-  default = "${env("BUILD_RESOURCE_GROUP_NAME")}"
+  default = "ubuntu-22-full"
 }
 
-variable "managed_image_name" {
+variable "component" {
   type    = string
-  default = ""
-}
-
-variable "client_id" {
-  type    = string
-  default = "${env("ARM_CLIENT_ID")}"
-}
-
-variable "client_secret" {
-  type      = string
-  default   = "${env("ARM_CLIENT_SECRET")}"
-  sensitive = true
-}
-
-variable "client_cert_path" {
-  type      = string
-  default   = "${env("ARM_CLIENT_CERT_PATH")}"
-}
-
-variable "commit_url" {
-  type      = string
-  default   = ""
-}
-
-variable "dockerhub_login" {
-  type    = string
-  default = "${env("DOCKERHUB_LOGIN")}"
-}
-
-variable "dockerhub_password" {
-  type    = string
-  default = "${env("DOCKERHUB_PASSWORD")}"
-}
-
-variable "helper_script_folder" {
-  type    = string
-  default = "/imagegeneration/helpers"
+  default = "io-de"
 }
 
 variable "image_folder" {
   type    = string
   default = "/imagegeneration"
-}
-
-variable "image_os" {
-  type    = string
-  default = "ubuntu22"
-}
-
-variable "image_version" {
-  type    = string
-  default = "dev"
 }
 
 variable "imagedata_file" {
@@ -83,59 +24,84 @@ variable "installer_script_folder" {
   default = "/imagegeneration/installers"
 }
 
-variable "install_password" {
-  type  = string
-  default = ""
-}
-
-variable "location" {
+variable "helper_script_folder" {
   type    = string
-  default = "${env("ARM_RESOURCE_LOCATION")}"
+  default = "/imagegeneration/helpers"
 }
 
-variable "private_virtual_network_with_public_ip" {
-  type    = bool
-  default = false
-}
-
-variable "managed_image_resource_group_name" {
+variable "vm_size" {
   type    = string
-  default = "${env("ARM_RESOURCE_GROUP")}"
+  default = "c5.large"
+}
+
+variable "capture_name_prefix" {
+  type    = string
+  default = "packer"
+}
+
+variable "image_version" {
+  type    = string
+  default = "dev"
+}
+
+variable "image_os" {
+  type    = string
+  default = "ubuntu22"
 }
 
 variable "run_validation_diskspace" {
-  type    = bool
-  default = false
+  type    = string
+  default = "false"
 }
 
-variable "subscription_id" {
+variable "ubuntu_version" {
   type    = string
-  default = "${env("ARM_SUBSCRIPTION_ID")}"
+  default = "22.04"
 }
 
-variable "temp_resource_group_name" {
+variable "ubuntu_codename" {
   type    = string
-  default = "${env("TEMP_RESOURCE_GROUP_NAME")}"
+  default = "jammy"
 }
 
-variable "tenant_id" {
+variable "aws_region" {
   type    = string
-  default = "${env("ARM_TENANT_ID")}"
+  default = "us-east-1"
 }
 
-variable "virtual_network_name" {
+variable "base_image_account" {
   type    = string
-  default = "${env("VNET_NAME")}"
+  default = "302414775646"
 }
 
-variable "virtual_network_resource_group_name" {
+variable "owner_name" {
   type    = string
-  default = "${env("VNET_RESOURCE_GROUP")}"
+  default = "io-de"
 }
 
-variable "virtual_network_subnet_name" {
+variable "vpc_id" {
   type    = string
-  default = "${env("VNET_SUBNET")}"
+  default = "vpc-0386901147f6dd6d5"
+}
+
+variable "subnet_id" {
+  type    = string
+  default = "subnet-05474a997bd444816"
+}
+
+variable "security_group_ids" {
+  type    = list(string)
+  default = ["sg-0d17d3220154b37b7"]
+}
+
+variable "dockerhub_login" {
+  type    = string
+  default = "${env("DOCKERHUB_LOGIN")}"
+}
+
+variable "dockerhub_password" {
+  type    = string
+  default = "${env("DOCKERHUB_PASSWORD")}"
 }
 
 variable "vm_size" {
@@ -143,40 +109,39 @@ variable "vm_size" {
   default = "Standard_D4s_v4"
 }
 
-source "azure-arm" "build_image" {
-  allowed_inbound_ip_addresses           = "${var.allowed_inbound_ip_addresses}"
-  build_resource_group_name              = "${var.build_resource_group_name}"
-  client_id                              = "${var.client_id}"
-  client_secret                          = "${var.client_secret}"
-  client_cert_path                       = "${var.client_cert_path}"
-  image_offer                            = "0001-com-ubuntu-server-jammy"
-  image_publisher                        = "canonical"
-  image_sku                              = "22_04-lts"
-  location                               = "${var.location}"
-  os_disk_size_gb                        = "86"
-  os_type                                = "Linux"
-  private_virtual_network_with_public_ip = "${var.private_virtual_network_with_public_ip}"
-  managed_image_name                     = "${local.managed_image_name}"
-  managed_image_resource_group_name      = "${var.managed_image_resource_group_name}"
-  subscription_id                        = "${var.subscription_id}"
-  temp_resource_group_name               = "${var.temp_resource_group_name}"
-  tenant_id                              = "${var.tenant_id}"
-  virtual_network_name                   = "${var.virtual_network_name}"
-  virtual_network_resource_group_name    = "${var.virtual_network_resource_group_name}"
-  virtual_network_subnet_name            = "${var.virtual_network_subnet_name}"
-  vm_size                                = "${var.vm_size}"
-
-  dynamic "azure_tag" {
-    for_each = var.azure_tags
-    content {
-      name = azure_tag.key
-      value = azure_tag.value
+source "amazon-ebs" "build_vhd" {
+  region = var.aws_region
+  source_ami_filter {
+    filters = {
+      name = "Deere_Ubuntu22.04_x64_BaseImage2-202*"
     }
+    owners = [var.base_image_account]
+    most_recent = true
   }
+  launch_block_device_mappings {
+    device_name = "/dev/sda1"
+    encrypted = "true"
+    volume_size = 100
+    delete_on_termination = true
+    kms_key_id = "d789b256-b44c-4e4d-bdd4-db30f7f5efa1"
+  }
+  associate_public_ip_address = "false"
+  instance_type = var.vm_size
+  ssh_username = "ubuntu"
+  ami_name = "${var.owner_name}_github-actions-runner_ubuntu22full_{{timestamp}}"
+  skip_create_ami = false
+  vpc_id = var.vpc_id
+  subnet_id = var.subnet_id
+  security_group_ids = var.security_group_ids
+  run_tags = {
+    Name = var.name_tag
+    component = var.component
+  }
+  ssh_interface = "private_ip"
 }
 
 build {
-  sources = ["source.azure-arm.build_image"]
+  sources = ["source.amazon-ebs.build_vhd"]
 
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
